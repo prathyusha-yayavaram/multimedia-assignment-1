@@ -1,4 +1,6 @@
 
+import sun.rmi.server.Activation$ActivationSystemImpl_Stub;
+
 import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
@@ -69,197 +71,117 @@ public class ImageDisplay {
 		imgFinal = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 		readImageRGB(width, height, args[0], imgOne);
 		int cnt = 5;
-		double zoom = Double.parseDouble(args[1]);
-		double rotationAngle = Double.parseDouble(args[2]);
-		double curZoom = 1;
-		double curRotationAngle = 0;
 
-//		while(cnt-- > 0) {
-//			curZoom  *= zoom;
-//			curRotationAngle += rotationAngle;
-//			double angleInRadians = Math.toRadians(curRotationAngle);
-//			performImageAction(curZoom, angleInRadians, imgOne);
-//			// Use label to display the image
-//			frame = new JFrame();
-//			GridBagLayout gLayout = new GridBagLayout();
-//			frame.getContentPane().setLayout(gLayout);
-//
-//			lbIm1 = new JLabel(new ImageIcon(imgFinal));
-//
-//			GridBagConstraints c = new GridBagConstraints();
-//			c.fill = GridBagConstraints.HORIZONTAL;
-//			c.anchor = GridBagConstraints.CENTER;
-//			c.weightx = 0.5;
-//			c.gridx = 0;
-//			c.gridy = 0;
-//
-//			c.fill = GridBagConstraints.HORIZONTAL;
-//			c.gridx = 0;
-//			c.gridy = 1;
-//			frame.getContentPane().add(lbIm1, c);
-//
-//			frame.pack();
-//			frame.setVisible(true);
-//			Thread.sleep(2000);
-//		}
-
-// Create the frame once
-		JFrame frame = new JFrame();
+		frame = new JFrame();
 		GridBagLayout gLayout = new GridBagLayout();
 		frame.getContentPane().setLayout(gLayout);
 
-// Assuming lbIm1 is declared outside the loop
-		JLabel lbIm1 = new JLabel();
-
+		lbIm1 = new JLabel();
 		GridBagConstraints c = new GridBagConstraints();
-		c.fill = GridBagConstraints.HORIZONTAL;
 		c.anchor = GridBagConstraints.CENTER;
 		c.weightx = 0.5;
-		c.gridx = 0;
-		c.gridy = 0;
 
 		c.fill = GridBagConstraints.HORIZONTAL;
 		c.gridx = 0;
 		c.gridy = 1;
-		frame.getContentPane().add(lbIm1, c);
 
+		lbIm1.setIcon(new ImageIcon(imgFinal));
+		frame.getContentPane().add(lbIm1, c);
+		frame.revalidate();
+		frame.repaint();
 		frame.pack();
 		frame.setVisible(true);
-// Inside the loop
-		while (cnt-- > 0) {
-			curZoom *= zoom;
-			curRotationAngle += rotationAngle;
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+		double zoom = Double.parseDouble(args[1]) - 1;
+		double rotationAngle = Double.parseDouble(args[2]);
+		double curZoom = 1;
+		double curRotationAngle = 0;
+		int fps = Integer.parseInt(args[3]);
+		double zoomIncrementFactor = zoom/fps;
+		double rotationIncrementFactor = rotationAngle/fps;
+		long startTime = System.currentTimeMillis();
+		while (curZoom > 0 && curZoom < 50) {
+
+			curZoom += zoomIncrementFactor;
+			// Check if curZoom is very close to zero and consider it as zero
+			if (curZoom < 0) {
+				curZoom = 0;
+			}
+			curRotationAngle += rotationIncrementFactor;
 			double angleInRadians = Math.toRadians(curRotationAngle);
 			performImageAction(curZoom, angleInRadians, imgOne);
 
 			// Update the image in the existing JLabel
 			lbIm1.setIcon(new ImageIcon(imgFinal));
+			frame.getContentPane().add(lbIm1, c);
+			frame.revalidate();
+			frame.repaint();
+			frame.pack();
+			frame.setVisible(true);
 
 			// Pause for 2 seconds
-			Thread.sleep(2000);
+			Thread.sleep((long)Math.max(0,(1000/fps)-33.33));
 		}
+		long endTime = System.currentTimeMillis();
+		long elapsedTime = endTime - startTime;
+		System.out.println("Time taken: " + elapsedTime + " milliseconds");
 
 // Ensure the program exits when the window is closed
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
 	}
 
 	private void performImageAction(double zoom, double angleInRadians, BufferedImage img) {
+		double cosValue = Math.cos(angleInRadians);
+		double sinValue = Math.sin(angleInRadians);
+		double invZoom = 1 / zoom;
+		int widthDiv2 = width / 2;
+		int heightDiv2 = height / 2;
 
 		for (int y = 0; y < height; y++) {
 			for (int x = 0; x < width; x++) {
-				int xt = x - width/2;
-				int yt = y - height/2;
-				double xOld = (1/zoom) * Math.cos(angleInRadians) * xt + (1/zoom) * Math.sin(angleInRadians) * yt + (width/2);
-				double yOld = -1 * (1/zoom) * Math.sin(angleInRadians) * xt + (1/zoom) * Math.cos(angleInRadians) * yt + (height/2);
+				int xt = x - widthDiv2;
+				int yt = y - heightDiv2;
+				double xOld = invZoom * cosValue * xt + invZoom * sinValue * yt + widthDiv2;
+				double yOld = -invZoom * sinValue * xt + invZoom * cosValue * yt + heightDiv2;
 				int xOldInt = (int) Math.floor(xOld);
 				int yOldInt = (int) Math.floor(yOld);
-				if (xOldInt >= 0 && xOldInt < 512 && yOldInt >= 0 && yOldInt < 512) {
-					setRGBValueFromOld(img, y, x, xOldInt, yOldInt, zoom);
 
-				}
-				else {
+				if (zoom != 0 && xOldInt >= 0 && xOldInt < 512 && yOldInt >= 0 && yOldInt < 512) {
+					setRGBValueFromOld(img, y, x, xOldInt, yOldInt, zoom);
+				} else {
 					imgFinal.setRGB(x, y, 0);
 				}
-//				int xo = x - (width / 2);
-//				int yo = y - (height / 2);
-//				double zoom = Double.parseDouble(z);
-//				double angleInRadians = Math.toRadians(Double.parseDouble(r));
-//				double xn = zoom * Math.cos(angleInRadians) * xo - zoom * Math.sin(angleInRadians) * yo + (width / 2);
-//				double yn = zoom * Math.sin(angleInRadians) * xo + zoom * Math.cos(angleInRadians) * yo + (height / 2);
-//				System.out.println(xo + " " + yo + "    " + xn + " " + yn + "   " + (int) xn + " " + (int) yn);
-//				int rgb = img.getRGB(x, y);
-//				int ceil_x = (int) Math.ceil(xn);
-//				int ceil_y = (int) Math.ceil(yn);
-//				int floor_x = (int) Math.floor(xn);
-//				int floor_y = (int) Math.floor(yn);
-//				int[] xs = new int[]{ceil_x, floor_x};
-//				int[] ys = new int[]{ceil_y, floor_y};
-//				for (int i = 0; i < 2; i++) {
-//					for (int j = 0; j < 2; j++) {
-//						if (xs[i] >= 0 && xs[i] < 512 && ys[j] >= 0 && ys[j] < 512) {
-//							imgFinal.setRGB(xs[i], ys[j], rgb);
-//						}
-//					}
-//				}
 			}
 		}
-
-//		for (int y = 0; y < height; y++) {
-//			for (int x = 0; x < width; x++) {
-//				int rgb = bilinearInterpolation(imgFinal, x, y, 512, 512);
-//				imgFinal.setRGB(x, y, rgb);
-//			}
-//		}
 	}
 
 	private void setRGBValueFromOld(BufferedImage img, int y, int x, int xOldInt, int yOldInt, double zoom) {
-		if (zoom < 1) {
+		if (zoom > 1) {
 			int rgb = img.getRGB(xOldInt, yOldInt);
 			imgFinal.setRGB(x, y, rgb);
-		}
-		else {
-			int filterFactor = (int)(1/zoom);
+		} else {
+			int filterFactor = Math.max((int) (1 / zoom), 1);
 			int red = 0, blue = 0, green = 0;
 			int cnt = 0;
-			for(int i=xOldInt - filterFactor; i<=xOldInt+filterFactor; i++) {
+
+			for (int i = xOldInt - filterFactor; i <= xOldInt + filterFactor; i++) {
 				for (int j = yOldInt - filterFactor; j <= yOldInt + filterFactor; j++) {
 					if (i >= 0 && i < 512 && j >= 0 && j < 512) {
 						cnt++;
 						int rgb = img.getRGB(i, j);
-						red = red + ((rgb >> 16) & 0xFF);
-						green = green + ((rgb >> 8) & 0xFF);
-						blue = blue + (rgb & 0xFF);
+						red += (rgb >> 16) & 0xFF;
+						green += (rgb >> 8) & 0xFF;
+						blue += rgb & 0xFF;
 					}
 				}
 			}
-			float avgRed = red/cnt;
-			float avgBlue = blue/cnt;
-			float avgGreen = green/cnt;
-			red = (int) (avgRed * 255);
-			green = (int) (avgGreen * 255);
-			blue = (int) (avgBlue * 255);
 
-			int avgRGB = 0xff000000 | ((red & 0xFF) << 16) | ((green & 0xFF) << 8) | (blue & 0xFF);
+			int avgRGB = 0xff000000 | ((red / cnt) & 0xFF) << 16 | ((green / cnt) & 0xFF) << 8 | (blue / cnt) & 0xFF;
 			imgFinal.setRGB(x, y, avgRGB);
 		}
 	}
 
-
-	// Bilinear interpolation function
-	public int bilinearInterpolation(BufferedImage image, double x, double y, int imageWidth, int imageHeight) {
-		int x0 = (int) Math.floor(x);
-		int x1 = x0 + 1;
-		int y0 = (int) Math.floor(y);
-		int y1 = y0 + 1;
-
-		if (x1 >= imageWidth) x1 = x0;
-		if (y1 >= imageHeight) y1 = y0;
-
-		double xFraction = x - x0;
-		double yFraction = y - y0;
-
-		int rgb00 = image.getRGB(x0, y0);
-		int rgb01 = image.getRGB(x0, y1);
-		int rgb10 = image.getRGB(x1, y0);
-		int rgb11 = image.getRGB(x1, y1);
-
-		int red = (int) ((1 - xFraction) * (1 - yFraction) * ((rgb00 >> 16) & 0xFF) +
-				xFraction * (1 - yFraction) * ((rgb10 >> 16) & 0xFF) +
-				(1 - xFraction) * yFraction * ((rgb01 >> 16) & 0xFF) +
-				xFraction * yFraction * ((rgb11 >> 16) & 0xFF));
-
-		int green = (int) ((1 - xFraction) * (1 - yFraction) * ((rgb00 >> 8) & 0xFF) +
-				xFraction * (1 - yFraction) * ((rgb10 >> 8) & 0xFF) +
-				(1 - xFraction) * yFraction * ((rgb01 >> 8) & 0xFF) +
-				xFraction * yFraction * ((rgb11 >> 8) & 0xFF));
-
-		int blue = (int) ((1 - xFraction) * (1 - yFraction) * (rgb00 & 0xFF) +
-				xFraction * (1 - yFraction) * (rgb10 & 0xFF) +
-				(1 - xFraction) * yFraction * (rgb01 & 0xFF) +
-				xFraction * yFraction * (rgb11 & 0xFF));
-
-		return (red << 16) | (green << 8) | blue;
-	}
 
 	public static void main(String[] args) throws InterruptedException {
 		ImageDisplay ren = new ImageDisplay();
