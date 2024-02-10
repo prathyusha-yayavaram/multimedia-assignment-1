@@ -192,11 +192,11 @@ public class ImageDisplay {
 
 	//Set RGB values based on zoom factor. Apply filter only when zooming out
 	private void setRGBValueFromOld(int y, int x, int xOldInt, int yOldInt, double zoom) {
-		if (zoom > 1) {
+		if (zoom >= 1) {
 			int rgb = imgOne.getRGB(xOldInt, yOldInt);
 			imgPerFrame.setRGB(x, y, rgb);
 		} else {
-			int red = avgRGB[xOldInt][yOldInt][0], blue = avgRGB[xOldInt][yOldInt][1], green = avgRGB[xOldInt][yOldInt][2];
+			int red = avgRGB[xOldInt][yOldInt][0], green = avgRGB[xOldInt][yOldInt][1], blue = avgRGB[xOldInt][yOldInt][2];
 			int avgRGB = 0xff000000 | ((red) & 0xFF) << 16 | ((green) & 0xFF) << 8 | (blue) & 0xFF;
 			imgPerFrame.setRGB(x, y, avgRGB);
 		}
