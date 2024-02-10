@@ -106,9 +106,12 @@ public class ImageDisplay {
 		double curZoom = 1;
 		double curRotationAngle = 0;
 
-		//Calculate zoom and rotation increment factor based on fps
+		// Calculate zoom and rotation increment factor based on fps
 		double zoomIncrementFactor = zoom/fps;
 		double rotationIncrementFactor = rotationAngle/fps;
+
+		// Handle fps after first frame
+		Thread.sleep(1000/fps);
 
 		long startTime = System.currentTimeMillis();
 		while (curZoom > 0) {
@@ -119,10 +122,10 @@ public class ImageDisplay {
 			curRotationAngle += rotationIncrementFactor;
 			double angleInRadians = Math.toRadians(curRotationAngle);
 
-			//Set transformed image
+			// Set transformed image
 			performImageTransformation(curZoom, angleInRadians);
 
-			//Repaint the image in JFrame
+			// Repaint the image in JFrame
 			frame.repaint();
 			frame.pack();
 
@@ -138,7 +141,7 @@ public class ImageDisplay {
 		}
 	}
 
-	//Precompute 3x3 avg RGB values for each pixel in the original image
+	// Precompute 3x3 avg RGB values for each pixel in the original image
 	private void calculateAverages() {
 		int filterFactor = 1;
 		for (int xOldInt = 0; xOldInt < width; xOldInt++) {
@@ -177,7 +180,7 @@ public class ImageDisplay {
 				int xt = x - widthDiv2;
 				int yt = y - heightDiv2;
 
-				//Inverse transformation and rounding to map new pixel to old pixel
+				// Inverse transformation and rounding to map new pixel to old pixel
 				double xOld = invZoom * cosValue * xt + invZoom * sinValue * yt + widthDiv2;
 				double yOld = -invZoom * sinValue * xt + invZoom * cosValue * yt + heightDiv2;
 				int xOldInt = (int) Math.round(xOld);
@@ -192,7 +195,7 @@ public class ImageDisplay {
 		}
 	}
 
-	//Set RGB values based on zoom factor. Apply filter only when zooming out
+	// Set RGB values based on zoom factor. Apply filter only when zooming out
 	private void setRGBValueFromOld(int y, int x, int xOldInt, int yOldInt, double zoom) {
 		if (zoom >= 1) {
 			int rgb = imgOne.getRGB(xOldInt, yOldInt);
